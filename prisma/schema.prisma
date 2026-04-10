@@ -1,0 +1,28 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model QueryLog {
+  id          Int      @id @default(autoincrement())
+  phone       String
+  queryType   String   // "text" ou "pdf"
+  userMessage String
+  aiResult    String?
+  fipeResult  String?
+  success     Boolean  @default(false)
+  errorMsg    String?
+  createdAt   DateTime @default(now())
+}
+
+model FipeCache {
+  id        Int      @id @default(autoincrement())
+  cacheKey  String   @unique
+  data      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}

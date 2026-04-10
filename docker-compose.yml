@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  fipeja:
+    build: .
+    container_name: fipeja-bot
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - auth_data:/app/auth_info_baileys
+      - db_data:/app/data
+    environment:
+      - DATABASE_URL=file:/app/data/fipeja.db
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  auth_data:
+  db_data:

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+auth_info_baileys/
+*.db
+*.db-journal
+.claude
+pdf-exemplo
+

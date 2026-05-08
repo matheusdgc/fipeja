@@ -1,4 +1,9 @@
-import { extractTextFromPdf } from '../pdf/parser.js';
+import {
+  extractTextFromPdf,
+  PDF_ERR_PROTECTED,
+  PDF_ERR_CORRUPTED,
+  PDF_ERR_SCANNED,
+} from '../pdf/parser.js';
 import { extractVehiclesFromPdf, VehicleFromPdf } from '../ai/openai.js';
 import {
   fetchPrice,
@@ -24,7 +29,7 @@ import {
 import { formatBatchResults } from '../utils/formatter.js';
 import { prisma } from '../database/client.js';
 import { moduleLogger } from '../utils/logger.js';
-import crypto from 'crypto';
+import { phoneHash, redactPii, redactPiiDeep } from '../utils/privacy.js';
 
 const log = moduleLogger('pdf-service');
 
@@ -58,10 +63,42 @@ interface VehicleMatchResult {
 }
 
 /**
+ * Concorrencia maxima ao resolver veiculos individuais (#17). 5
+ * paralelos respeita o rate-limiter da FIPE com folga e reduz tempo
+ * de resposta de PDFs grandes em 5x.
+ */
+const VEHICLE_RESOLVE_CONCURRENCY = 5;
+
+/** Roda `worker` sobre `items` com no maximo `limit` em voo simultaneo. */
+async function mapWithLimit<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T, idx: number) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+
+  async function runner(): Promise<void> {
+    while (true) {
+      const i = nextIndex++;
+      if (i >= items.length) return;
+      results[i] = await worker(items[i], i);
+    }
+  }
+
+  const runners = Array.from(
+    { length: Math.min(limit, items.length) },
+    () => runner()
+  );
+  await Promise.all(runners);
+  return results;
+}
+
+/**
  * Processa um PDF com lista de veiculos e retorna os precos FIPE.
  */
 export async function handlePdfQuery(buffer: Buffer, phone: string): Promise<string> {
-  const phoneHash = crypto.createHash('sha256').update(phone).digest('hex').substring(0, 16);
+  const phoneId = phoneHash(phone);
   const startedAt = Date.now();
 
   try {
@@ -69,31 +106,35 @@ export async function handlePdfQuery(buffer: Buffer, phone: string): Promise<str
     const pdfText = await extractTextFromPdf(buffer);
 
     // 2. Usa IA para extrair lista de veiculos
-    const vehicles = await extractVehiclesFromPdf(pdfText);
+    const extraction = await extractVehiclesFromPdf(pdfText);
+    const { vehicles, truncated, originalChars } = extraction;
 
     if (vehicles.length === 0) {
-      await logQuery(phoneHash, 'pdf', '[PDF]', null, null, false, 'Nenhum veiculo encontrado');
+      await logQuery(phoneId, 'pdf', '[PDF]', null, null, false, 'Nenhum veiculo encontrado');
       return 'Não encontrei nenhum veículo no PDF enviado.\n\nVerifique se o PDF contém informações de veículos (marca, modelo, ano).';
     }
 
-    // 3. Resolve cada veiculo
-    const results: VehicleMatchResult[] = [];
-    for (const vehicle of vehicles) {
-      const r = await resolveVehicle(vehicle);
-      results.push(r);
-      log.info(
-        {
-          phoneHash,
-          vehicle: r.diagnosis.vehicleName,
-          ok: r.diagnosis.ok,
-          score: r.diagnosis.score,
-          confidence: r.diagnosis.confidence,
-          matchedModel: r.diagnosis.matchedModel,
-          fuel: r.diagnosis.fuel,
-        },
-        r.diagnosis.ok ? 'Veiculo resolvido' : 'Veiculo nao resolvido'
-      );
-    }
+    // 3. Resolve cada veiculo (em paralelo controlado #17)
+    const results = await mapWithLimit(
+      vehicles,
+      VEHICLE_RESOLVE_CONCURRENCY,
+      async (vehicle) => {
+        const r = await resolveVehicle(vehicle);
+        log.info(
+          {
+            phoneId,
+            vehicle: r.diagnosis.vehicleName,
+            ok: r.diagnosis.ok,
+            score: r.diagnosis.score,
+            confidence: r.diagnosis.confidence,
+            matchedModel: r.diagnosis.matchedModel,
+            fuel: r.diagnosis.fuel,
+          },
+          r.diagnosis.ok ? 'Veiculo resolvido' : 'Veiculo nao resolvido'
+        );
+        return r;
+      }
+    );
 
     // 4. Monta mensagem para o usuario
     const formatted = results.map((r) => ({
@@ -101,18 +142,25 @@ export async function handlePdfQuery(buffer: Buffer, phone: string): Promise<str
       price: r.price ?? undefined,
       error: r.diagnosis.ok ? undefined : r.diagnosis.reason ?? 'Não encontrado',
     }));
-    const message = formatBatchResults(formatted);
+    let message = formatBatchResults(formatted);
+
+    // Se o PDF foi truncado (#16), avisamos antes do resultado.
+    if (truncated) {
+      message =
+        `_PDF muito longo: processei os primeiros veiculos. Envie em partes para garantir que nada fique de fora (texto original: ${originalChars} chars)._\n\n` +
+        message;
+    }
 
     const successCount = results.filter((r) => r.price).length;
     const elapsedMs = Date.now() - startedAt;
 
     log.info(
-      { phoneHash, total: vehicles.length, found: successCount, elapsedMs },
+      { phoneId, total: vehicles.length, found: successCount, elapsedMs, truncated },
       'Lote PDF processado'
     );
 
     await logQuery(
-      phoneHash,
+      phoneId,
       'pdf',
       `[PDF com ${vehicles.length} veiculos]`,
       vehicles,
@@ -120,6 +168,7 @@ export async function handlePdfQuery(buffer: Buffer, phone: string): Promise<str
         total: vehicles.length,
         found: successCount,
         elapsedMs,
+        truncated,
         diagnoses: results.map((r) => r.diagnosis),
       },
       successCount > 0
@@ -128,10 +177,16 @@ export async function handlePdfQuery(buffer: Buffer, phone: string): Promise<str
     return message;
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : 'Erro desconhecido';
-    log.error({ err, phoneHash }, 'Erro ao processar PDF');
-    await logQuery(phoneHash, 'pdf', '[PDF]', null, null, false, errorMsg);
+    log.error({ err, phoneId }, 'Erro ao processar PDF');
+    await logQuery(phoneId, 'pdf', '[PDF]', null, null, false, errorMsg);
 
-    if (errorMsg.includes('protegido') || errorMsg.includes('corrompido') || errorMsg.includes('ler')) {
+    // Erros tratados pelo parser ja vem com mensagem amigavel — passa
+    // direto para o usuario.
+    if (
+      errorMsg === PDF_ERR_PROTECTED ||
+      errorMsg === PDF_ERR_CORRUPTED ||
+      errorMsg === PDF_ERR_SCANNED
+    ) {
       return errorMsg;
     }
 
@@ -347,11 +402,12 @@ async function logQuery(
       data: {
         phone,
         queryType,
-        userMessage,
-        aiResult: aiResult ? JSON.stringify(aiResult) : null,
+        userMessage: redactPii(userMessage),
+        aiResult: aiResult ? JSON.stringify(redactPiiDeep(aiResult)) : null,
+        // fipeResult e dado da FIPE — nao contem PII do consultor.
         fipeResult: fipeResult ? JSON.stringify(fipeResult) : null,
         success,
-        errorMsg: errorMsg || null,
+        errorMsg: errorMsg ? redactPii(errorMsg) : null,
       },
     });
   } catch (err) {

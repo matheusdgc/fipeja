@@ -6,6 +6,7 @@ auth_info_baileys/
 *.db-journal
 .claude
 pdf-exemplo
+data/
 # scripts temporarios de bootstrap/teste local (nao commitar)
 extract-tmp.mjs
 test-smoke.mjs

@@ -18,11 +18,11 @@ const log = moduleLogger('whatsapp/connection');
 // por padrao para nao poluir o terminal, mas e configuravel via env.
 const baileysLogger = pino({ level: process.env.BAILEYS_LOG_LEVEL || 'silent' });
 
-let sock: WASocket;
+let sock: WASocket | null = null;
 let waVersion: WAVersion | null = null;
 let reconnectAttempts = 0;
 
-export function getSocket(): WASocket {
+export function getSocket(): WASocket | null {
   return sock;
 }
 

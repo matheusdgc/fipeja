@@ -1,6 +1,6 @@
 import { config } from './config.js';
 import { prisma } from './database/client.js';
-import { startWhatsApp } from './whatsapp/connection.js';
+import { startWhatsApp, getSocket } from './whatsapp/connection.js';
 import { logger, moduleLogger } from './utils/logger.js';
 
 const log = moduleLogger('index');
@@ -19,6 +19,19 @@ async function shutdown(signal: NodeJS.Signals) {
   if (shuttingDown) return;
   shuttingDown = true;
   log.info({ signal }, 'Encerrando aplicacao');
+
+  // Encerra o socket WhatsApp ANTES de desconectar Prisma — handlers em
+  // andamento podem tentar gravar QueryLog. End() e idempotente em
+  // Baileys e devolve a conexao limpa pro servidor WA.
+  try {
+    const sock = getSocket();
+    if (sock) {
+      sock.end(undefined);
+    }
+  } catch (err) {
+    log.warn({ err }, 'Falha ao encerrar socket WhatsApp');
+  }
+
   try {
     await prisma.$disconnect();
   } catch (err) {

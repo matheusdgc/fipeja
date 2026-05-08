@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   fipeja:
     build: .
@@ -11,6 +9,16 @@ services:
       - db_data:/app/data
     environment:
       - DATABASE_URL=file:/app/data/fipeja.db
+    # SIGTERM precisa chegar no Node para o shutdown handler rodar
+    # (Prisma disconnect, sock.end). Aumentamos o grace period para 30s
+    # cobrindo casos de PDF em processamento.
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"const fs=require('fs'); const s=fs.statSync('/app/data/heartbeat'); if (Date.now()-s.mtimeMs>120000) process.exit(1);\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     logging:
       driver: json-file
       options:

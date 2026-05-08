@@ -1,0 +1,409 @@
+{
+  "pdf": "burci-seguros.pdf",
+  "generatedAt": "2026-04-30T12:39:58.730414Z",
+  "pdfSha256": "25db6ccc5fc5fc17c2ec296eb9cf524e9fbfb872c10c53d9130d518ce60bbaee",
+  "totalVehicles": 25,
+  "matched": 24,
+  "expected": [
+    {
+      "sourceText": "1 DODGE MOTOR HOME MODELO ESPECIAL - 6 PASS 2012 2012 AVZ7I51 9BSP4X200D3815178 90 33.600,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Dodge",
+      "model": "MOTOR HOME MODELO ESPECIAL",
+      "year": 2012,
+      "fuel": null,
+      "vehicleType": "carros",
+      "expectedMatch": {
+        "brand": null,
+        "model": null,
+        "year": null,
+        "fipeCode": null,
+        "score": null,
+        "confidence": null
+      }
+    },
+    {
+      "sourceText": "2 CAMINHAO L 1620 6X2 - 3 PASS 2008 2008 ASR1771 9BM6953048B592391 90 21.300,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Mercedes-Benz",
+      "model": "L 1620 6X2",
+      "year": 2008,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "MERCEDES-BENZ",
+        "model": "L-1620 3-Eixos 2p (diesel)",
+        "year": "2008",
+        "fipeCode": "509084-9",
+        "score": 0.717,
+        "confidence": "low"
+      }
+    },
+    {
+      "sourceText": "3 CAMINHAO VM 330 6X4 E5 - 2 PASS 2014 2015 QIL0160 93KP0S1D0FE152045 90 33.600,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Volvo",
+      "model": "VM 330 6X4 E5",
+      "year": 2014,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "VOLVO",
+        "model": "VM 330 6x4 2p (diesel) (E5)",
+        "year": "2014",
+        "fipeCode": "516141-0",
+        "score": 0.775,
+        "confidence": "high"
+      }
+    },
+    {
+      "sourceText": "4 CAMINHAO CARGO 1517 TURBO 4X2 - 3 PASS 2010 2011 ARC1348 9BFXCE5U8BBB76096 90 16.680,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Ford",
+      "model": "CARGO 1517 TURBO 4X2",
+      "year": 2010,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "FORD",
+        "model": "CARGO 1517 Turbo 2p (diesel)",
+        "year": "2010",
+        "fipeCode": "504030-2",
+        "score": 0.742,
+        "confidence": "low"
+      }
+    },
+    {
+      "sourceText": "5 CAMINHAO CARGO 2422 TURBO 6X2 - 3 PASS 2005 2005 ANJ5598 9BFYCN9T75BB63883 90 19.200,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Ford",
+      "model": "CARGO 2422 TURBO 6X2",
+      "year": 2005,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "FORD",
+        "model": "CARGO 2422/ 2422 E 3-Eixos 2p (diesel)",
+        "year": "2005",
+        "fipeCode": "504045-0",
+        "score": 0.723,
+        "confidence": "high"
+      }
+    },
+    {
+      "sourceText": "6 CAMINHAO CARGO 2422 TURBO 6X2 - 3 PASS 2010 2010 ASM7562 9BFYCEHV0ABB51491 90 19.200,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Ford",
+      "model": "CARGO 2422 TURBO 6X2",
+      "year": 2010,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "FORD",
+        "model": "CARGO 2422/ 2422 E 3-Eixos 2p (diesel)",
+        "year": "2010",
+        "fipeCode": "504045-0",
+        "score": 0.723,
+        "confidence": "high"
+      }
+    },
+    {
+      "sourceText": "7 CAMINHAO CARGO 2425 6X4 - 3 PASS 2002 2002 DAJ5A03 9BFYTNYT62BB14574 90 9.460,15 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Ford",
+      "model": "CARGO 2425 6X4",
+      "year": 2002,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "FORD",
+        "model": "CARGO 2425 3-Eixos 2p (diesel)",
+        "year": "2002",
+        "fipeCode": "504046-9",
+        "score": 0.717,
+        "confidence": "high"
+      }
+    },
+    {
+      "sourceText": "8 CAMINHAO CARGO 2428 E 6X2 - 3 PAS 2009 2009 AOQ2D00 9BFYCEJX59BB36007 90 21.100,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Ford",
+      "model": "CARGO 2428 E 6X2",
+      "year": 2009,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "FORD",
+        "model": "CARGO 2428 E T 8x2 2p (diesel)",
+        "year": "2009",
+        "fipeCode": "504125-2",
+        "score": 0.764,
+        "confidence": "low"
+      }
+    },
+    {
+      "sourceText": "9 CAMINHAO CARGO 2429 TURBO E5 6X2 - 3 PASS 2012 2013 AWQ0461 9BFYEALEXDBL31136 90 25.700,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Ford",
+      "model": "CARGO 2429 TURBO E5 6X2",
+      "year": 2012,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "FORD",
+        "model": "CARGO 2429 E 6x2 Turbo 2p (diesel)(E5)",
+        "year": "2012",
+        "fipeCode": "504141-4",
+        "score": 0.775,
+        "confidence": "high"
+      }
+    },
+    {
+      "sourceText": "10 CAMINHAO CARGO 3133 TURBO E5 6X4 - 3 PASS 2016 2017 BBL4372 9BFZEBJE4HBS96421 90 11.600,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Ford",
+      "model": "CARGO 3133 TURBO E5 6X4",
+      "year": 2016,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "FORD",
+        "model": "CARGO 3133 E 6x4 Turbo 2p (diesel)(E5)",
+        "year": "2016",
+        "fipeCode": "504144-9",
+        "score": 0.775,
+        "confidence": "high"
+      }
+    },
+    {
+      "sourceText": "11 TECTOR 240E 25 6X2 - 3 PASS 2010 2010 NON2554 93ZE2HJ00A8901488 90 15.100,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Iveco",
+      "model": "TECTOR 240E 25 6X2",
+      "year": 2010,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "IVECO",
+        "model": "TECTOR 240E25 6x2 2p (diesel)",
+        "year": "2010",
+        "fipeCode": "506054-0",
+        "score": 0.31,
+        "confidence": "low"
+      }
+    },
+    {
+      "sourceText": "12 S-560 A 6x4 2p (diesel)(E6 2023 2024 SBJ8D18 9BSS6X400R4047794 90 96.814,87 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Scania",
+      "model": "S-560 A 6x4 2p (diesel)(E6)",
+      "year": 2023,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "SCANIA",
+        "model": "S-560 A 6x4 2p (diesel)(E6)",
+        "year": "2023",
+        "fipeCode": "513411-0",
+        "score": 0.79,
+        "confidence": "low"
+      }
+    },
+    {
+      "sourceText": "13 VABIS CAMINHAO P 310 B 8X2 E5 - 2 PASS 2012 2012 AVD2823 9BSP8X200C3805111 90 21.100,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Scania",
+      "model": "P 310 B 8X2 E5",
+      "year": 2012,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "SCANIA",
+        "model": "P-310 B 8x2 (diesel) (E5)",
+        "year": "2012",
+        "fipeCode": "513245-2",
+        "score": 0.79,
+        "confidence": "low"
+      }
+    },
+    {
+      "sourceText": "14 VABIS REBOCADOR R 420 A 6X4 - 3 PASS 2011 2012 AVE4361 9BSR6X400C3698964 90 21.100,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Scania",
+      "model": "R 420 A 6X4",
+      "year": 2011,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "SCANIA",
+        "model": "R-420 A 6x4 2p (diesel)",
+        "year": "2011",
+        "fipeCode": "513194-4",
+        "score": 0.94,
+        "confidence": "low"
+      }
+    },
+    {
+      "sourceText": "15 VABIS REBOCADOR R 440 A 6X2 E5 - 3 PASS 2012 2012 AVK6995 9BSR6X400C3806345 90 21.100,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Scania",
+      "model": "R 440 A 6X2 E5",
+      "year": 2012,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "SCANIA",
+        "model": "R-440 A 4x2 3-Eixos/A 6x2 2p(dies.) (E5)",
+        "year": "2012",
+        "fipeCode": "513220-7",
+        "score": 0.681,
+        "confidence": "low"
+      }
+    },
+    {
+      "sourceText": "16 VABIS REBOCADOR G 420 A 6X4 - 3 PASS 2011 2011 ARC3242 9BSR6X400B3690324 90 21.100,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Scania",
+      "model": "G 420 A 6X4",
+      "year": 2011,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "SCANIA",
+        "model": "G-420 A 6x4 2p (diesel)",
+        "year": "2011",
+        "fipeCode": "513163-4",
+        "score": 0.925,
+        "confidence": "low"
+      }
+    },
+    {
+      "sourceText": "17 VABIS REBOCADOR R 540 A 6X4 E6 - 3 PASS 2024 2024 ARC7C54 9BSR6X400R4065293 90 76.000,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Scania",
+      "model": "R 540 A 6X4 E6",
+      "year": 2024,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "SCANIA",
+        "model": "R-540 A 6x4 2p (diesel)(E6)",
+        "year": "2024",
+        "fipeCode": "513443-9",
+        "score": 0.79,
+        "confidence": "low"
+      }
+    },
+    {
+      "sourceText": "18 VABIS REBOCADOR R 440 A 6X4 E5 - 3 PASS 2013 2013 AXK6821 9BSR6X400D3839195 90 27.500,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Scania",
+      "model": "R 440 A 6X4 E5",
+      "year": 2013,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "SCANIA",
+        "model": "R-440 A 6x4 2p (diesel) (E5)",
+        "year": "2013",
+        "fipeCode": "513221-5",
+        "score": 0.775,
+        "confidence": "low"
+      }
+    },
+    {
+      "sourceText": "19 VABIS REBOCADOR R 440 A 6X2 E5 - 3 PASS 2013 2013 AWH2I73 9BSR6X200D3819067 90 34.600,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Scania",
+      "model": "R 440 A 6X2 E5",
+      "year": 2013,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "SCANIA",
+        "model": "R-440 A 4x2 3-Eixos/A 6x2 2p(dies.) (E5)",
+        "year": "2013",
+        "fipeCode": "513220-7",
+        "score": 0.681,
+        "confidence": "low"
+      }
+    },
+    {
+      "sourceText": "20 VABIS REBOCADOR T 113-H 360 TURBO IC 4X2 - 3 PASS 1997 1997 GUK8D68 9BSTH4X2ZV3266536 90 21.000,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Scania",
+      "model": "T 113-H 360 TURBO IC 4X2",
+      "year": 1997,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "SCANIA",
+        "model": "T-113 H 360 4x2 2p (diesel)",
+        "year": "1997",
+        "fipeCode": "513069-7",
+        "score": 0.745,
+        "confidence": "low"
+      }
+    },
+    {
+      "sourceText": "21 VABIS REBOCADOR T 113-H 360 TURBO IC 4X2 - 3 PASS 1997 1997 AHN6D10 9BSTH4X2ZV3268871 90 21.000,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Scania",
+      "model": "T 113-H 360 TURBO IC 4X2",
+      "year": 1997,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "SCANIA",
+        "model": "T-113 H 360 4x2 2p (diesel)",
+        "year": "1997",
+        "fipeCode": "513069-7",
+        "score": 0.745,
+        "confidence": "low"
+      }
+    },
+    {
+      "sourceText": "22 REBOCADOR ACTROS 2653 MP5 S 6X4 E5 - 3 PASS 2021 2021 ARC5J38 9BM963424MB229668 90 71.600,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Scania",
+      "model": "ACTROS 2653 MP5 S 6X4 E5",
+      "year": 2021,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "MERCEDES-BENZ",
+        "model": "Actros 2653 MP5 S 6x4 2p (diesel)(E5)",
+        "year": "2021",
+        "fipeCode": "509328-7",
+        "score": 0.82,
+        "confidence": "low"
+      }
+    },
+    {
+      "sourceText": "23 REBOCADOR ACTROS 2653 MP5 S 6X4 E5 - 3 PASS 2021 2021 ARC5J37 9BM963424MB229640 90 71.600,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Scania",
+      "model": "ACTROS 2653 MP5 S 6X4 E5",
+      "year": 2021,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "MERCEDES-BENZ",
+        "model": "Actros 2653 MP5 S 6x4 2p (diesel)(E5)",
+        "year": "2021",
+        "fipeCode": "509328-7",
+        "score": 0.82,
+        "confidence": "low"
+      }
+    },
+    {
+      "sourceText": "24 VABIS REBOCADOR G 420 A 6X4 - 3 PASS 2011 2011 ARC4C01 9BSG6X400B3682175 90 21.900,00 500.000,00 500.000,00 - - - - - 800 -",
+      "brand": "Scania",
+      "model": "G 420 A 6X4",
+      "year": 2011,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "SCANIA",
+        "model": "G-420 A 6x4 2p (diesel)",
+        "year": "2011",
+        "fipeCode": "513163-4",
+        "score": 0.925,
+        "confidence": "low"
+      }
+    },
+    {
+      "sourceText": "25 VABIS REBOCADOR G 420 A 6X4 - 3 PASS 2011 2011 ARC9420 9BSG6X400B3682033 90 21.900,00 500.000,00 500.000,00 - - - - - 800",
+      "brand": "Scania",
+      "model": "G 420 A 6X4",
+      "year": 2011,
+      "fuel": "diesel",
+      "vehicleType": "caminhoes",
+      "expectedMatch": {
+        "brand": "SCANIA",
+        "model": "G-420 A 6x4 2p (diesel)",
+        "year": "2011",
+        "fipeCode": "513163-4",
+        "score": 0.925,
+        "confidence": "low"
+      }
+    }
+  ]
+}

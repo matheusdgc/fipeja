@@ -13,7 +13,10 @@ import { findBrand, findModels, findYearCodes, getLatestYear } from '../fipe/sea
 import { getFromCache, setCache } from '../fipe/cache.js';
 import { formatFipeResult, formatDisambiguation } from '../utils/formatter.js';
 import { prisma } from '../database/client.js';
+import { moduleLogger } from '../utils/logger.js';
 import crypto from 'crypto';
+
+const log = moduleLogger('query-service');
 
 interface QueryResult {
   message: string;
@@ -82,7 +85,7 @@ export async function handleTextQuery(
     // Busca pela cadeia: marca → modelo → ano → preço
     return await handleBrandModelQuery(interpretation, phoneHash, userMessage);
   } catch (err) {
-    console.error('Erro na consulta:', err);
+    log.error({ err, phoneHash }, 'Erro na consulta de texto');
     await logQuery(phoneHash, 'text', userMessage, null, null, false, String(err));
     return {
       message: 'Estou com dificuldades técnicas. Tente novamente em alguns minutos.',
@@ -247,6 +250,6 @@ async function logQuery(
       },
     });
   } catch (err) {
-    console.error('Erro ao salvar log:', err);
+    log.error({ err }, 'Erro ao salvar QueryLog');
   }
 }

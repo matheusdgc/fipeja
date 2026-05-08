@@ -22,6 +22,8 @@ Para cada veículo encontrado, extraia:
 - year: Ano do modelo (4 dígitos). Se não especificado, null.
 - vehicleType: Um de "carros", "motos", "caminhoes".
 - fipeCode: SOMENTE se estiver no formato exato NNNNNN-N (ex: 014193-0). Caso contrário, null.
+- fuel: Combustível, um de "flex", "gasoline", "diesel", "ethanol", "electric", "hybrid". null se não for claro. Para caminhões pesados, geralmente "diesel".
+- sourceText: O TRECHO LITERAL da linha original do PDF que descreve este veículo (ex: "CAMINHAO L 1620 6X2 - 3 PASS"). Mantenha exatamente como está no documento.
 
 REGRAS PARA INFERIR brand (palavras como "CAMINHAO" e "REBOCADOR" são tipos, NÃO marcas):
 
@@ -60,7 +62,15 @@ REGRAS para vehicleType:
 - Carros de passeio → "carros"
 - Motos → "motos"
 
+REGRAS para fuel:
+- Caminhões pesados (Mercedes-Benz série L, Volvo VM/FH/FM, Scania R/G/P/S/T, Ford Cargo, Iveco Tector/Stralis, VW Constellation) → "diesel"
+- Se aparecer "FLEX", "TOTALFLEX" → "flex"
+- Se aparecer "DIESEL", "DSL" → "diesel"
+- Se aparecer "GASOLINA" → "gasoline"
+- Se aparecer "ALCOOL", "ÁLCOOL", "ETANOL" → "ethanol"
+- Se não houver pista explícita e não for caminhão → null
+
 Responda SOMENTE com JSON válido contendo um array "vehicles":
-{"vehicles": [{"brand": string, "model": string, "year": number|null, "vehicleType": string, "fipeCode": string|null}]}
+{"vehicles": [{"brand": string, "model": string, "year": number|null, "vehicleType": string, "fipeCode": string|null, "fuel": string|null, "sourceText": string}]}
 
 Se nenhum veículo for encontrado, retorne: {"vehicles": []}`;

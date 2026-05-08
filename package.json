@@ -8,7 +8,9 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "db:migrate": "prisma migrate dev",
-    "db:generate": "prisma generate"
+    "db:generate": "prisma generate",
+    "eval-pdf": "tsx scripts/eval-pdf.ts",
+    "eval-pdf:bootstrap": "tsx scripts/eval-pdf.ts --bootstrap"
   },
   "keywords": [
     "fipe",
@@ -28,6 +30,7 @@
   "devDependencies": {
     "@types/node": "^25.5.0",
     "@types/qrcode-terminal": "^0.12.2",
+    "pino-pretty": "^11.2.2",
     "prisma": "^6.19.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"

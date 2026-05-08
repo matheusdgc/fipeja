@@ -1,83 +1,134 @@
 import { extractTextFromPdf } from '../pdf/parser.js';
 import { extractVehiclesFromPdf, VehicleFromPdf } from '../ai/openai.js';
 import {
-  fetchBrands,
-  fetchModels,
-  fetchYears,
   fetchPrice,
   fetchPriceByFipeCode,
   VehicleType,
   FipePrice,
+  Brand,
 } from '../fipe/api.js';
-import { findBrand, findModels, findYearCodes, getLatestYear } from '../fipe/search.js';
-import { getFromCache, setCache } from '../fipe/cache.js';
+import { findBrand } from '../fipe/search.js';
+import {
+  rankModels,
+  detectFuel,
+  isHighConfidence,
+  ScoredModel,
+  MatchableModel,
+  Fuel,
+} from '../fipe/match.js';
+import {
+  getCachedBrands,
+  getCachedModels,
+  getCachedYears,
+} from '../fipe/cache.js';
 import { formatBatchResults } from '../utils/formatter.js';
 import { prisma } from '../database/client.js';
+import { moduleLogger } from '../utils/logger.js';
 import crypto from 'crypto';
 
+const log = moduleLogger('pdf-service');
+
+const FIPE_CODE_REGEX = /^\d{6}-\d$/;
+
 /**
- * Processa um PDF com lista de veículos e retorna os preços FIPE.
+ * Diagnostico estruturado de cada veiculo do lote. Sai junto com o
+ * resultado e tambem e persistido em QueryLog.fipeResult, para que a
+ * gente consiga depois explicar por que um modelo foi escolhido.
+ */
+interface VehicleMatchDiagnosis {
+  vehicleName: string;
+  ok: boolean;
+  reason?: string;
+  matchedBrand?: string;
+  matchedModel?: string;
+  matchedYear?: string;
+  score?: number;
+  confidence?: 'high' | 'low';
+  /** Topo da lista de candidatos avaliados, para auditoria. */
+  topCandidates?: Array<{ name: string; score: number }>;
+  /** Combustivel inferido (LLM ou regex local). */
+  fuel?: Fuel | null;
+  /** Codigo FIPE do match final, se houver. */
+  fipeCode?: string;
+}
+
+interface VehicleMatchResult {
+  diagnosis: VehicleMatchDiagnosis;
+  price: FipePrice | null;
+}
+
+/**
+ * Processa um PDF com lista de veiculos e retorna os precos FIPE.
  */
 export async function handlePdfQuery(buffer: Buffer, phone: string): Promise<string> {
   const phoneHash = crypto.createHash('sha256').update(phone).digest('hex').substring(0, 16);
+  const startedAt = Date.now();
 
   try {
     // 1. Extrai texto do PDF
     const pdfText = await extractTextFromPdf(buffer);
 
-    // 2. Usa IA para extrair lista de veículos
+    // 2. Usa IA para extrair lista de veiculos
     const vehicles = await extractVehiclesFromPdf(pdfText);
 
     if (vehicles.length === 0) {
-      await logQuery(phoneHash, 'pdf', '[PDF]', null, null, false, 'Nenhum veículo encontrado');
+      await logQuery(phoneHash, 'pdf', '[PDF]', null, null, false, 'Nenhum veiculo encontrado');
       return 'Não encontrei nenhum veículo no PDF enviado.\n\nVerifique se o PDF contém informações de veículos (marca, modelo, ano).';
     }
 
-    // 3. Consulta FIPE para cada veículo
-    const results: Array<{ vehicle: string; price?: FipePrice; error?: string }> = [];
-
+    // 3. Resolve cada veiculo
+    const results: VehicleMatchResult[] = [];
     for (const vehicle of vehicles) {
-      const vehicleName = `${vehicle.brand} ${vehicle.model}${vehicle.year ? ` ${vehicle.year}` : ''}`;
-
-      try {
-        // Só usa fipeCode se tiver formato válido: 6 dígitos + traço + 1 dígito (ex: 014193-0)
-        const FIPE_CODE_REGEX = /^\d{6}-\d$/;
-        if (vehicle.fipeCode && FIPE_CODE_REGEX.test(vehicle.fipeCode)) {
-          const prices = await fetchPriceByFipeCode(vehicle.fipeCode);
-          if (prices.length > 0) {
-            results.push({ vehicle: vehicleName, price: prices[0] as unknown as FipePrice });
-            continue;
-          }
-        }
-
-        // Busca pela cadeia marca → modelo → ano → preço
-        const price = await lookupVehicle(vehicle);
-        if (price) {
-          results.push({ vehicle: vehicleName, price });
-        } else {
-          results.push({ vehicle: vehicleName, error: 'Não encontrado na tabela FIPE' });
-        }
-      } catch (err) {
-        results.push({ vehicle: vehicleName, error: 'Erro na consulta' });
-      }
+      const r = await resolveVehicle(vehicle);
+      results.push(r);
+      log.info(
+        {
+          phoneHash,
+          vehicle: r.diagnosis.vehicleName,
+          ok: r.diagnosis.ok,
+          score: r.diagnosis.score,
+          confidence: r.diagnosis.confidence,
+          matchedModel: r.diagnosis.matchedModel,
+          fuel: r.diagnosis.fuel,
+        },
+        r.diagnosis.ok ? 'Veiculo resolvido' : 'Veiculo nao resolvido'
+      );
     }
 
-    const message = formatBatchResults(results);
+    // 4. Monta mensagem para o usuario
+    const formatted = results.map((r) => ({
+      vehicle: r.diagnosis.vehicleName,
+      price: r.price ?? undefined,
+      error: r.diagnosis.ok ? undefined : r.diagnosis.reason ?? 'Não encontrado',
+    }));
+    const message = formatBatchResults(formatted);
+
     const successCount = results.filter((r) => r.price).length;
+    const elapsedMs = Date.now() - startedAt;
+
+    log.info(
+      { phoneHash, total: vehicles.length, found: successCount, elapsedMs },
+      'Lote PDF processado'
+    );
 
     await logQuery(
       phoneHash,
       'pdf',
-      `[PDF com ${vehicles.length} veículos]`,
+      `[PDF com ${vehicles.length} veiculos]`,
       vehicles,
-      { total: vehicles.length, found: successCount },
+      {
+        total: vehicles.length,
+        found: successCount,
+        elapsedMs,
+        diagnoses: results.map((r) => r.diagnosis),
+      },
       successCount > 0
     );
 
     return message;
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : 'Erro desconhecido';
-    console.error('Erro ao processar PDF:', err);
+    log.error({ err, phoneHash }, 'Erro ao processar PDF');
     await logQuery(phoneHash, 'pdf', '[PDF]', null, null, false, errorMsg);
 
     if (errorMsg.includes('protegido') || errorMsg.includes('corrompido') || errorMsg.includes('ler')) {
@@ -88,66 +139,191 @@ export async function handlePdfQuery(buffer: Buffer, phone: string): Promise<str
   }
 }
 
-async function lookupVehicle(vehicle: VehicleFromPdf): Promise<FipePrice | null> {
+/**
+ * Tenta resolver um veiculo individual: primeiro pelo codigo FIPE
+ * (caminho mais barato), depois pela cadeia marca > modelo (com
+ * scoring) > ano > preco.
+ */
+async function resolveVehicle(vehicle: VehicleFromPdf): Promise<VehicleMatchResult> {
+  const vehicleName = `${vehicle.brand} ${vehicle.model}${vehicle.year ? ` ${vehicle.year}` : ''}`;
+  const baseDiagnosis: VehicleMatchDiagnosis = {
+    vehicleName,
+    ok: false,
+    fuel: vehicle.fuel ?? detectFuel(vehicle.sourceText) ?? detectFuel(vehicle.model),
+  };
+
+  // 1. Tentar via codigo FIPE direto
+  if (vehicle.fipeCode && FIPE_CODE_REGEX.test(vehicle.fipeCode)) {
+    try {
+      const prices = await fetchPriceByFipeCode(vehicle.fipeCode);
+      if (prices.length > 0) {
+        const p = prices[0];
+        return {
+          price: p,
+          diagnosis: {
+            ...baseDiagnosis,
+            ok: true,
+            matchedBrand: p.Marca,
+            matchedModel: p.Modelo,
+            matchedYear: String(p.AnoModelo),
+            fipeCode: p.CodigoFipe,
+            confidence: 'high',
+          },
+        };
+      }
+    } catch (err) {
+      log.warn(
+        { err, fipeCode: vehicle.fipeCode, vehicle: vehicleName },
+        'Falha ao consultar por codigo FIPE; caira no fallback marca/modelo'
+      );
+    }
+  }
+
+  // 2. Cadeia marca > modelo > ano
+  return resolveByBrandModel(vehicle, baseDiagnosis, vehicleName);
+}
+
+async function resolveByBrandModel(
+  vehicle: VehicleFromPdf,
+  baseDiagnosis: VehicleMatchDiagnosis,
+  vehicleName: string
+): Promise<VehicleMatchResult> {
   const type = vehicle.vehicleType as VehicleType;
 
+  let brands: Brand[];
   try {
-    const cacheKey = `brands:${type}`;
-    let brands = await getFromCache<any[]>(cacheKey);
-    if (!brands) {
-      brands = await fetchBrands(type);
-      await setCache(cacheKey, brands, 24);
-    }
-
-    // Tenta marca principal + fallbacks (ex: Saab-Scania → Scania e vice-versa)
-    const brandCandidates = [vehicle.brand, ...getBrandFallbacks(vehicle.brand)];
-
-    for (const brandName of brandCandidates) {
-      const brand = findBrand(brands, brandName);
-      if (!brand) continue;
-
-      const modelsCacheKey = `models:${type}:${brand.codigo}`;
-      let modelsResponse = await getFromCache<{ modelos: any[] }>(modelsCacheKey);
-      if (!modelsResponse) {
-        modelsResponse = await fetchModels(type, brand.codigo);
-        await setCache(modelsCacheKey, modelsResponse, 24);
-      }
-
-      const models = findModels(modelsResponse.modelos, vehicle.model);
-      if (models.length === 0) {
-        console.log(`[lookup] modelo nao encontrado: "${vehicle.model}" em ${brand.nome}`);
-        continue;
-      }
-
-      const model = models[0];
-
-      const years = await fetchYears(type, brand.codigo, model.codigo);
-      let yearCode;
-      if (vehicle.year) {
-        const matches = findYearCodes(years, vehicle.year);
-        // Se o ano exato não existe, usa o mais recente disponível
-        yearCode = matches[0] || getLatestYear(years);
-        if (!matches[0]) {
-          console.log(`[lookup] ano ${vehicle.year} nao encontrado em ${brand.nome} ${model.nome}, usando mais recente`);
-        }
-      } else {
-        yearCode = getLatestYear(years);
-      }
-
-      if (!yearCode) {
-        console.log(`[lookup] nenhum ano disponivel para ${brand.nome} ${model.nome}`);
-        continue;
-      }
-
-      return await fetchPrice(type, brand.codigo, model.codigo, yearCode.codigo);
-    }
-
-    console.log(`[lookup] nao encontrado: "${vehicle.brand} ${vehicle.model}" (tipo: ${type})`);
-    return null;
+    brands = await getCachedBrands(type);
   } catch (err) {
-    console.log(`[lookup] erro API para "${vehicle.brand} ${vehicle.model}": ${err instanceof Error ? err.message : err}`);
+    log.error({ err, type, vehicle: vehicleName }, 'Falha ao listar marcas');
+    return {
+      price: null,
+      diagnosis: { ...baseDiagnosis, reason: 'Erro ao consultar marcas FIPE' },
+    };
+  }
+
+  // Tenta a marca declarada e seus fallbacks (ex: Saab-Scania <-> Scania).
+  const brandCandidates = [vehicle.brand, ...getBrandFallbacks(vehicle.brand)];
+
+  for (const brandName of brandCandidates) {
+    const brand = findBrand(brands, brandName);
+    if (!brand) continue;
+
+    let modelsResp;
+    try {
+      modelsResp = await getCachedModels(type, brand.codigo);
+    } catch (err) {
+      log.warn({ err, brand: brand.nome }, 'Falha ao listar modelos da marca');
+      continue;
+    }
+
+    // Score! Aqui esta o coracao da melhoria de precisao.
+    const fuel = baseDiagnosis.fuel ?? null;
+    const ranked = rankModels(vehicle.model, modelsResp.modelos, {
+      fuel,
+      limit: 5,
+      minScore: 0.3,
+    });
+
+    const topCandidates = ranked.slice(0, 3).map((r) => ({
+      name: r.model.nome,
+      score: Number(r.breakdown.total.toFixed(3)),
+    }));
+
+    if (ranked.length === 0) {
+      log.debug(
+        { brand: brand.nome, query: vehicle.model, vehicle: vehicleName },
+        'Nenhum modelo passou no threshold de scoring'
+      );
+      continue;
+    }
+
+    // Para cada candidato, ve se existem anos disponiveis compativeis
+    // com vehicle.year. Quem casar primeiro (na ordem de score) ganha.
+    for (const scored of ranked) {
+      const yearMatch = await findYearForCandidate(type, brand.codigo, scored, vehicle.year);
+      if (!yearMatch) continue;
+
+      try {
+        const price = await fetchPrice(type, brand.codigo, scored.model.codigo, yearMatch.codigo);
+        return {
+          price,
+          diagnosis: {
+            ...baseDiagnosis,
+            ok: true,
+            matchedBrand: brand.nome,
+            matchedModel: scored.model.nome,
+            matchedYear: yearMatch.nome,
+            score: Number(scored.breakdown.total.toFixed(3)),
+            confidence: isHighConfidence(ranked) ? 'high' : 'low',
+            topCandidates,
+            fipeCode: price.CodigoFipe,
+          },
+        };
+      } catch (err) {
+        log.warn(
+          { err, brand: brand.nome, model: scored.model.nome },
+          'Falha ao buscar preco; tentando proximo candidato'
+        );
+      }
+    }
+
+    // Se chegou aqui, todos os top-K falharam para esta marca. Salva
+    // diagnostico parcial e segue para fallback (proxima marca, se
+    // houver).
+    return {
+      price: null,
+      diagnosis: {
+        ...baseDiagnosis,
+        reason: 'Modelos encontrados mas nenhum com ano compativel',
+        matchedBrand: brand.nome,
+        topCandidates,
+      },
+    };
+  }
+
+  return {
+    price: null,
+    diagnosis: { ...baseDiagnosis, reason: 'Marca/modelo nao encontrado' },
+  };
+}
+
+/**
+ * Busca anos disponiveis para um candidato e devolve o que melhor
+ * corresponde ao ano-alvo. Quando o ano nao foi informado, usa o mais
+ * recente (excluindo "32000" que e 0km).
+ */
+async function findYearForCandidate(
+  type: VehicleType,
+  brandId: string,
+  scored: ScoredModel<MatchableModel>,
+  targetYear: number | null
+) {
+  let years;
+  try {
+    years = await getCachedYears(type, brandId, scored.model.codigo);
+  } catch (err) {
+    log.warn(
+      { err, model: scored.model.nome },
+      'Falha ao listar anos do modelo; descartando candidato'
+    );
     return null;
   }
+
+  // Filtra "32000" (0km) — geralmente nao e o que o usuario quer em
+  // consulta de PDF de seguro.
+  const usable = years.filter((y) => !y.codigo.startsWith('32000'));
+
+  if (targetYear !== null) {
+    const exact = usable.find((y) => y.nome.startsWith(String(targetYear)));
+    if (exact) return exact;
+    // Diferente do comportamento antigo (que forcava o mais recente),
+    // aqui devolvemos null para que o proximo candidato em scoring
+    // tenha chance. Isso melhora muito a precisao quando o ano-alvo
+    // existe em outra variante do modelo.
+    return null;
+  }
+
+  return usable[0] ?? null;
 }
 
 function getBrandFallbacks(brandName: string): string[] {
@@ -179,6 +355,6 @@ async function logQuery(
       },
     });
   } catch (err) {
-    console.error('Erro ao salvar log:', err);
+    log.error({ err }, 'Erro ao salvar QueryLog');
   }
 }

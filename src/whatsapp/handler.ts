@@ -1,6 +1,9 @@
 import { WASocket, WAMessage, downloadMediaMessage } from '@whiskeysockets/baileys';
 import { handleTextQuery } from '../services/query-service.js';
 import { handlePdfQuery } from '../services/pdf-service.js';
+import { moduleLogger } from '../utils/logger.js';
+
+const log = moduleLogger('whatsapp/handler');
 
 // Estado de desambiguação: quando o bot pergunta "qual modelo?" e espera resposta numérica
 interface PendingSelection {
@@ -42,12 +45,13 @@ export function registerMessageHandler(sock: WASocket): void {
       const jidOk = msg.key.remoteJid?.endsWith('@s.whatsapp.net') || msg.key.remoteJid?.endsWith('@lid');
       if (!jidOk) continue;
 
-      const textContent = getTextContent(msg);
-
       try {
         await processMessage(sock, msg);
       } catch (err) {
-        console.error('Erro ao processar mensagem:', err);
+        log.error(
+          { err, jid: msg.key.remoteJid, msgId: msg.key.id },
+          'Erro ao processar mensagem'
+        );
         await sendText(sock, msg.key.remoteJid!, 'Ocorreu um erro interno. Tente novamente em alguns instantes.');
       }
     }

@@ -10,10 +10,19 @@ const log = moduleLogger('ai/openai');
 // este modulo em testes nao explodir caso a OPENAI_API_KEY nao esteja
 // presente. Tambem evitamos vazar a chave em logs ja que ela so e
 // usada quando o cliente e realmente requisitado.
+//
+// Timeout/retry explicitos: o default do SDK openai-node e 600s (10min).
+// Se a OpenAI fica lenta, o handler do WhatsApp prende a mensagem do
+// usuario por minutos sem feedback. 30s + 2 retries cobre lentidao
+// transitoria sem deixar o bot pendurado.
 let _client: OpenAI | null = null;
 function getClient(): OpenAI {
   if (!_client) {
-    _client = new OpenAI({ apiKey: config.OPENAI_API_KEY });
+    _client = new OpenAI({
+      apiKey: config.OPENAI_API_KEY,
+      timeout: 30_000,
+      maxRetries: 2,
+    });
   }
   return _client;
 }
@@ -137,12 +146,35 @@ export async function interpretVehicleQuery(userMessage: string): Promise<Vehicl
 }
 
 /**
- * Extrai lista de veículos a partir do texto de um PDF.
+ * Limite de chars enviados pra OpenAI. 50k chars ~ 12.5k tokens, mais
+ * do que suficiente pra uma apolice tipica. Acima disso protegemos
+ * custo (PDFs de 500 paginas existem).
  */
-export async function extractVehiclesFromPdf(pdfText: string): Promise<VehicleFromPdf[]> {
-  // Limita tamanho do prompt para evitar custo absurdo com PDFs gigantes.
-  // 50k chars ~ 12.5k tokens, mais do que suficiente para uma apolice.
-  const trimmedText = pdfText.length > 50_000 ? pdfText.slice(0, 50_000) : pdfText;
+export const PDF_TEXT_CHAR_LIMIT = 50_000;
+
+export interface PdfExtractionResult {
+  vehicles: VehicleFromPdf[];
+  /** True se o texto enviado pra OpenAI foi cortado por causa do limite. */
+  truncated: boolean;
+  /** Tamanho original em chars (uso de log/UX). */
+  originalChars: number;
+}
+
+/**
+ * Extrai lista de veículos a partir do texto de um PDF.
+ *
+ * Quando o PDF excede PDF_TEXT_CHAR_LIMIT, o texto e truncado e
+ * sinalizamos via `truncated: true` para que o handler avise o
+ * consultor — do contrario, veiculos no fim do PDF "somem"
+ * silenciosamente.
+ */
+export async function extractVehiclesFromPdf(
+  pdfText: string
+): Promise<PdfExtractionResult> {
+  const truncated = pdfText.length > PDF_TEXT_CHAR_LIMIT;
+  const trimmedText = truncated
+    ? pdfText.slice(0, PDF_TEXT_CHAR_LIMIT)
+    : pdfText;
 
   const response = await getClient().chat.completions.create({
     model: config.OPENAI_MODEL,
@@ -165,9 +197,14 @@ export async function extractVehiclesFromPdf(pdfText: string): Promise<VehicleFr
     .filter((v): v is VehicleFromPdf => v !== null);
 
   log.info(
-    { rawCount: rawList.length, sanitizedCount: sanitized.length },
+    {
+      rawCount: rawList.length,
+      sanitizedCount: sanitized.length,
+      originalChars: pdfText.length,
+      truncated,
+    },
     'Veiculos extraidos do PDF'
   );
 
-  return sanitized;
+  return { vehicles: sanitized, truncated, originalChars: pdfText.length };
 }

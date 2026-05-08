@@ -26,3 +26,18 @@ model FipeCache {
   expiresAt DateTime
   createdAt DateTime @default(now())
 }
+
+/// Estado de desambiguacao por JID. Persistido em SQLite para sobreviver
+/// a restarts do bot. TTL controlado pela aplicacao via expiresAt.
+model PendingSelection {
+  jid            String   @id
+  /// Lista serializada (JSON) de opcoes oferecidas ao usuario.
+  /// Schema: Array<{ name, brandId, modelId, vehicleType }>
+  options        String
+  year           Int?
+  /// Query original do usuario (ex: "Civic 2020"). Necessaria para que
+  /// o log de auditoria nao registre apenas "1", "2", etc.
+  originalQuery  String
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
+}

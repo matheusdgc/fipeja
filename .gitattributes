@@ -1,0 +1,27 @@
+# Normaliza fim de linha entre Windows (CRLF) e Linux/Docker (LF).
+# Sem isso, o checkout em maquina Windows marca todos os arquivos como
+# modificados por causa de \r\n, poluindo `git status` e PRs.
+
+* text=auto eol=lf
+
+# Texto explicito (mesmo em maquinas Windows fica LF)
+*.ts        text eol=lf
+*.tsx       text eol=lf
+*.js        text eol=lf
+*.json      text eol=lf
+*.md        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.toml      text eol=lf
+*.prisma    text eol=lf
+*.sql       text eol=lf
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+.env*       text eol=lf
+
+# Binarios
+*.png       binary
+*.jpg       binary
+*.pdf       binary
+*.ico       binary
+*.gif       binary
